@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS players (
     matches integer NOT NULL
 );
 
--- This table will store matches that have been assigned
+-- This table will store matches for the tournament
 CREATE TABLE IF NOT EXISTS matches (
     player1_id integer REFERENCES players(id),
     player2_id integer REFERENCES players(id)

@@ -169,34 +169,29 @@ def swissPairings():
         matches = []
 
         # If we have an uneven amount of players,
-        # we are going to remove the last player
-        # so they will not participate in a match
+        # last player in list will not be paired
         if countPlayers() % 2 != 0:
             d_results.pop()
 
-        c.execute("select id from players order by wins desc")
-        res = c.fetchall()
-
         while len(d_results) > 0:
-            p1 = d_results.popleft()
+            player = d_results.popleft()
 
-            # here we will check to see if the match is valid
-            # or if we need to continue looking
+            # need to determine if the match is valid
             for x in xrange(len(d_results)):
                 opponent = d_results[x]
                 c.execute(
                     "select player1_id, player2_id from matches where "
                     "player1_id = (%s::int) and player2_id = (%s::int) or "
                     "player1_id = (%s::int) and player2_id = (%s::int)",
-                    (p1[0], opponent[0], opponent[0], p1[0]))
+                    (player[0], opponent[0], opponent[0], player[0]))
                 result = c.fetchone()
 
                 # if no results were found then this pairing for a match has not occurred and
                 # we can create this match
-                if result is None or result[0] == 0:
+                if result is None:
                     del d_results[x]
-                    addMatch(c, p1[0], opponent[0])
-                    matches.append((p1[0], p1[1], opponent[0], opponent[1]))
+                    addMatch(c, player[0], opponent[0])
+                    matches.append((player[0], player[1], opponent[0], opponent[1]))
                     break
 
         db.commit()
