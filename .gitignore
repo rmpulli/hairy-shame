@@ -52,6 +52,9 @@ docs/_build/
 
 # PyBuilder
 target/
+<<<<<<< HEAD
 
 # JetBrains
 .idea/
+=======
+>>>>>>> bb847458a3f0c1291a4ac22c7a5d6efaa1c79d3f
