@@ -3,9 +3,10 @@
 # tournament.py -- implementation of a Swiss-system tournament
 #
 
-import psycopg2
 import sys
 from collections import deque
+
+import psycopg2
 
 
 def connect():
@@ -21,6 +22,7 @@ def deleteMatches():
     try:
         c.execute("update players set wins = 0")
         c.execute("update players set matches = 0")
+        c.execute("TRUNCATE matches")
         db.commit()
     except:
         print "Unexpected error: ", sys.exc_info()[0]
@@ -35,7 +37,7 @@ def deletePlayers():
     c = db.cursor()
 
     try:
-        c.execute("TRUNCATE players")
+        c.execute("TRUNCATE players CASCADE")
         db.commit()
     except:
         print "Unexpected error: ", sys.exc_info()[0]
@@ -137,6 +139,11 @@ def updateMatches(c, player_id):
     c.execute("update players set (matches) = (matches + 1) where id = (%s)", (player_id,))
 
 
+def addMatch(c, player1_id, player2_id):
+    c.execute("insert into matches (player1_id, player2_id) values (%s, %s)",
+              (player1_id, player2_id,))
+
+
 def swissPairings():
     """Returns a list of pairs of players for the next round of a match.
   
@@ -156,23 +163,48 @@ def swissPairings():
     db = connect()
     c = db.cursor()
 
-    c.execute("select id, name from players order by wins desc")
-    d_results = deque(c.fetchall())
-    matches = []
+    try:
+        c.execute("select id, name from players order by wins desc")
+        d_results = deque(c.fetchall())
+        matches = []
 
-    # If we have an uneven amount of players,
-    # we are going to remove the last player
-    # so they will not participate in a match
-    if countPlayers() % 2 != 0:
-        d_results.pop()
+        # If we have an uneven amount of players,
+        # we are going to remove the last player
+        # so they will not participate in a match
+        if countPlayers() % 2 != 0:
+            d_results.pop()
 
-    # get the 2 players who will be facing each other.
-    # add them to a new 'match' in the expected format
-    while len(d_results) > 0:
-        p1 = d_results.popleft()
-        p2 = d_results.popleft()
-        match = (p1[0], p1[1], p2[0], p2[1])
-        matches.append(match)
+        c.execute("select id from players order by wins desc")
+        res = c.fetchall()
 
-    db.close()
+        while len(d_results) > 0:
+            p1 = d_results.popleft()
+
+            # here we will check to see if the match is valid
+            # or if we need to continue looking
+            for x in xrange(len(d_results)):
+                opponent = d_results[x]
+                c.execute(
+                    "select player1_id, player2_id from matches where "
+                    "player1_id = (%s::int) and player2_id = (%s::int) or "
+                    "player1_id = (%s::int) and player2_id = (%s::int)",
+                    (p1[0], opponent[0], opponent[0], p1[0]))
+                result = c.fetchone()
+
+                # if no results were found then this pairing for a match has not occurred and
+                # we can create this match
+                if result is None or result[0] == 0:
+                    del d_results[x]
+                    addMatch(c, p1[0], opponent[0])
+                    matches.append((p1[0], p1[1], opponent[0], opponent[1]))
+                    break
+
+        db.commit()
+
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        raise
+    finally:
+        db.close()
+
     return matches

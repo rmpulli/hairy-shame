@@ -6,10 +6,16 @@
 -- You can write comments in this file by starting them with two dashes, like
 -- these lines here.
 
-
+-- This table will store the player information
 CREATE TABLE IF NOT EXISTS players (
-    id      integer SERIAL PRIMARY KEY,
+    id      SERIAL PRIMARY KEY,
     name    varchar(50) NOT NULL,
     wins    integer NOT NULL,
     matches integer NOT NULL
+);
+
+-- This table will store matches that have been assigned
+CREATE TABLE IF NOT EXISTS matches (
+    player1_id integer REFERENCES players(id),
+    player2_id integer REFERENCES players(id)
 );
